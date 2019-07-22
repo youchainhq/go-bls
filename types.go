@@ -14,8 +14,8 @@ const PublicKeyBytes = 96
 // DigestBytes is the length of a BLS message hash/digest
 //const DigestBytes = 96
 
-// Signature is a compressed affine
-type Signature [SignatureBytes]byte
+// CompressedSignature is a compressed affine
+type CompressedSignature [SignatureBytes]byte
 
 // CompressedSecret is a compressed affine representing a SecretKey
 type CompressedSecret [SecretKeyBytes]byte
@@ -47,6 +47,13 @@ type PublicKey interface {
 	Compress() CompressedPublic
 }
 
+type Signature interface {
+	// Aggregate adds an other signature to the current.
+	//Aggregate(other Signature) error
+	// Compress compresses the signature to a byte slice.
+	Compress() CompressedSignature
+}
+
 type BlsManager interface {
 	// GenerateKey generates a fresh key-pair for BLS signatures.
 	GenerateKey() (SecretKey, PublicKey)
@@ -62,6 +69,8 @@ type BlsManager interface {
 	DecompressPublicKey(CompressedPublic) (PublicKey, error)
 	//DecompressPrivateKey
 	DecompressPrivateKey(CompressedSecret) (SecretKey, error)
+	//Decompress Signature
+	DecompressSignature(CompressedSignature) (Signature, error)
 }
 
 func (b CompressedPublic) String() string {
@@ -72,6 +81,6 @@ func (b CompressedSecret) String() string {
 	return fmt.Sprintf("%0x", b[:])
 }
 
-func (b Signature) String() string {
+func (b CompressedSignature) String() string {
 	return fmt.Sprintf("%0x", b[:])
 }

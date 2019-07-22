@@ -129,6 +129,17 @@ func TestRogueKey(t *testing.T) {
 	t.Log(err)
 }
 
+func TestSignature_Compress(t *testing.T) {
+	sk, _ := blsMgr.GenerateKey()
+	m1 := Message("message to be signed. 将要做签名的消息")
+	sig1 := sk.Sign(m1)
+
+	cb := sig1.Compress()
+	cb[0] = cb[0] + 0x01
+	origin := sig1.Compress()
+	assert.NotEqual(t, cb, origin)
+}
+
 //benchmark
 
 func BenchmarkBLSAggregateSignature(b *testing.B) {
@@ -177,5 +188,39 @@ func BenchmarkBlsDecompressPublicKey(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blsMgr.DecompressPublicKey(cpk) //nolint:errcheck
+	}
+}
+
+func BenchmarkBlsManager_DecompressSignature(b *testing.B) {
+	sk, _ := blsMgr.GenerateKey()
+	m1 := Message("message to be signed. 将要做签名的消息")
+	sig1 := sk.Sign(m1)
+	cb := sig1.Compress()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		blsMgr.DecompressSignature(cb) //nolint:errcheck
+	}
+}
+
+func BenchmarkSignature_Compress(b *testing.B) {
+	sk, _ := blsMgr.GenerateKey()
+	m1 := Message("message to be signed. 将要做签名的消息")
+	sig1 := sk.Sign(m1)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		sig1.Compress() //nolint:errcheck
+	}
+}
+
+func BenchmarkSignature_serialize(b *testing.B) {
+	sk, _ := blsMgr.GenerateKey()
+	m1 := Message("message to be signed. 将要做签名的消息")
+	sig1 := sk.Sign(m1)
+	osig := sig1.(*signature)
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		osig.serialize() //nolint:errcheck
 	}
 }
