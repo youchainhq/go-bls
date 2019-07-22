@@ -30,20 +30,18 @@ func (mgr *blsManager) GenerateKey() (SecretKey, PublicKey) {
 func (mgr *blsManager) Aggregate(sigs []Signature) (Signature, error) {
 	switch l := len(sigs); l {
 	case 0:
-		return Signature{}, errors.New("no signatures")
-	case 1:
-		return sigs[0], nil
+		return nil, errors.New("no signatures")
 	default:
 		g1sigs := make([]*g2pubs.Signature, 0, l)
 		for i, sig := range sigs {
-			g1sig, err := g2pubs.DeserializeSignature(sig)
-			if err != nil {
-				return Signature{}, fmt.Errorf("find at lease one uncrrect signature, first index: %d, error: %v", i, err)
+			osig, ok := sig.(*signature)
+			if !ok {
+				return nil, fmt.Errorf("find at lease one uncrrect signature, first index: %d", i)
 			}
-			g1sigs = append(g1sigs, g1sig)
+			g1sigs = append(g1sigs, osig.sig)
 		}
 		result := g2pubs.AggregateSignatures(g1sigs)
-		return result.Serialize(), nil
+		return &signature{sig: result}, nil
 	}
 }
 
@@ -72,11 +70,11 @@ func (mgr *blsManager) VerifyAggregatedOne(pubs []PublicKey, m Message, sig Sign
 	if err != nil {
 		return err
 	}
-	g1sig, err := g2pubs.DeserializeSignature(sig)
-	if err != nil {
-		return err
+	osig, ok := sig.(*signature)
+	if !ok {
+		return ErrInvalidSig
 	}
-	ok := g1sig.VerifyAggregateCommon(originPubs, m)
+	ok = osig.sig.VerifyAggregateCommon(originPubs, m)
 	if ok {
 		return nil
 	}
@@ -89,9 +87,9 @@ func (mgr *blsManager) VerifyAggregatedN(pubs []PublicKey, ms []Message, sig Sig
 	if err != nil {
 		return err
 	}
-	g1sig, err := g2pubs.DeserializeSignature(sig)
-	if err != nil {
-		return err
+	osig, ok := sig.(*signature)
+	if !ok {
+		return ErrInvalidSig
 	}
 	if len(originPubs) != len(ms) {
 		return fmt.Errorf("different length of pubs and messages, %d vs %d", len(originPubs), len(ms))
@@ -100,7 +98,7 @@ func (mgr *blsManager) VerifyAggregatedN(pubs []PublicKey, ms []Message, sig Sig
 	for i, m := range ms {
 		msgs[i] = m
 	}
-	ok := g1sig.VerifyAggregate(originPubs, msgs)
+	ok = osig.sig.VerifyAggregate(originPubs, msgs)
 	if ok {
 		return nil
 	}
@@ -120,6 +118,18 @@ func (mgr *blsManager) DecompressPrivateKey(b CompressedSecret) (SecretKey, erro
 		return nil, errors.New("invalid secret key bytes")
 	}
 	return &secret{sk: sk}, nil
+}
+
+//Decompress Signature
+func (mgr *blsManager) DecompressSignature(b CompressedSignature) (Signature, error) {
+	g1sig, err := g2pubs.DeserializeSignature(b)
+	if err == nil {
+		//make a copy
+		var copyBytes CompressedSignature
+		copy(copyBytes[:], b[:])
+		return &signature{sig: g1sig, cb: &copyBytes}, nil
+	}
+	return nil, err
 }
 
 func converPublicKeysToOrigin(pubs []PublicKey) ([]*g2pubs.PublicKey, error) {
