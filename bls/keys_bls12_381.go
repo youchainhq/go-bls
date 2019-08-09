@@ -1,4 +1,4 @@
-package go_bls
+package bls
 
 import (
 	"errors"

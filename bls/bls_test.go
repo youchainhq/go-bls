@@ -1,11 +1,10 @@
-package go_bls
+package bls
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
 	"testing"
-	"time"
 )
 
 var blsMgr = NewBlsManager()
@@ -120,10 +119,10 @@ func TestBlsManager_Aggregate(t *testing.T) {
 }
 
 func TestRogueKey(t *testing.T) {
+	rcpstr := "2be5782d6ecb09f0e4f6c995dc9ad470d552d650cafa960b9aca51005362d005e008aa6c7f348f3a6d238f275e9cfc1d2204c35c97b31c4d24a02d6c13bba5bd1249042ca7b83fd0be56a0001ab378afb03e90a9bbf6f08a63f74ffd267a0358"
+	bs, _ := hex.DecodeString(rcpstr)
 	var rcp CompressedPublic
-	rand.Seed(time.Now().Unix())
-	rand.Read(rcp[:])
-
+	copy(rcp[:], bs)
 	_, err := blsMgr.DecompressPublicKey(rcp)
 	assert.Error(t, err)
 	t.Log(err)
