@@ -1,7 +1,6 @@
 package bls
 
 import (
-	"encoding/hex"
 	"fmt"
 	"github.com/stretchr/testify/assert"
 	"testing"
@@ -52,10 +51,19 @@ func TestSingleSignAndVerify(t *testing.T) {
 func TestBlsManager_Decompress(t *testing.T) {
 	sk, pk := blsMgr.GenerateKey()
 	bsk, bpk := sk.Compress(), pk.Compress()
-	dsk, err := blsMgr.DecompressPrivateKey(bsk)
+	dsk, err := blsMgr.DecSecretKey(bsk)
 	assert.NoError(t, err)
-	dpk, err := blsMgr.DecompressPublicKey(bpk)
+	dpk, err := blsMgr.DecPublicKey(bpk)
 	assert.NoError(t, err)
+
+	//decompress string
+	dskFromHex, err := blsMgr.DecSecretKeyHex(bsk.String())
+	assert.NoError(t, err)
+	assert.Equal(t, sk.Compress(), dskFromHex.Compress())
+
+	dpkFromHex, err := blsMgr.DecPublicKeyHex(bpk.String())
+	assert.NoError(t, err)
+	assert.Equal(t, pk.Compress(), dpkFromHex.Compress())
 
 	//cross sign and verify
 	m1 := Message("message to be signed. 将要做签名的消息")
@@ -64,6 +72,44 @@ func TestBlsManager_Decompress(t *testing.T) {
 	assert.NoError(t, err)
 	sig2 := dsk.Sign(m1)
 	assert.EqualValues(t, sig1, sig2)
+
+	dsig, err := blsMgr.DecSignature(sig1.Compress())
+	assert.NoError(t, err)
+	err = dpk.Verify(m1, dsig)
+	assert.NoError(t, err)
+	dsigFromHex, err := blsMgr.DecSignatureHex(sig1.Compress().String())
+	assert.NoError(t, err)
+	err = dpk.Verify(m1, dsigFromHex)
+	assert.NoError(t, err)
+
+	//prefix string
+	skstr := "0x" + bsk.String()
+	pkstr := "0x" + bpk.String()
+	sigstr := "0x" + sig1.Compress().String()
+	dskFromHex, err = blsMgr.DecSecretKeyHex(skstr)
+	assert.NoError(t, err)
+	assert.Equal(t, sk.Compress(), dskFromHex.Compress())
+
+	dpkFromHex, err = blsMgr.DecPublicKeyHex(pkstr)
+	assert.NoError(t, err)
+	assert.Equal(t, pk.Compress(), dpkFromHex.Compress())
+	dsigFromHex, err = blsMgr.DecSignatureHex(sigstr)
+	assert.NoError(t, err)
+	err = dpk.Verify(m1, dsigFromHex)
+	assert.NoError(t, err)
+
+	//invalid hex
+	skstr += "00"
+	pkstr += pkstr[:len(pkstr)-1]
+	sigcp := sig1.Compress()
+	sigcp[0] = sigcp[0] + 1
+	sigstr = sigcp.String()
+	dskFromHex, err = blsMgr.DecSecretKeyHex(skstr)
+	assert.Error(t, err)
+	dpkFromHex, err = blsMgr.DecPublicKeyHex(pkstr)
+	assert.Error(t, err)
+	dsigFromHex, err = blsMgr.DecSignatureHex(sigstr)
+	assert.Error(t, err)
 }
 
 func TestBlsManager_Aggregate(t *testing.T) {
@@ -116,14 +162,16 @@ func TestBlsManager_Aggregate(t *testing.T) {
 	err = blsMgr.VerifyAggregatedN(pubs, msgs, adsig)
 	assert.Error(t, err)
 
+	//invalid length
+	_, err = blsMgr.Aggregate(nil)
+	assert.Error(t, err)
+	_, err = blsMgr.AggregatePublic(make([]PublicKey, 0))
+	assert.Error(t, err)
 }
 
 func TestRogueKey(t *testing.T) {
 	rcpstr := "2be5782d6ecb09f0e4f6c995dc9ad470d552d650cafa960b9aca51005362d005e008aa6c7f348f3a6d238f275e9cfc1d2204c35c97b31c4d24a02d6c13bba5bd1249042ca7b83fd0be56a0001ab378afb03e90a9bbf6f08a63f74ffd267a0358"
-	bs, _ := hex.DecodeString(rcpstr)
-	var rcp CompressedPublic
-	copy(rcp[:], bs)
-	_, err := blsMgr.DecompressPublicKey(rcp)
+	_, err := blsMgr.DecPublicKeyHex(rcpstr)
 	assert.Error(t, err)
 	t.Log(err)
 }
@@ -186,7 +234,7 @@ func BenchmarkBlsDecompressPublicKey(b *testing.B) {
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blsMgr.DecompressPublicKey(cpk) //nolint:errcheck
+		blsMgr.DecPublicKey(cpk) //nolint:errcheck
 	}
 }
 
@@ -197,7 +245,7 @@ func BenchmarkBlsManager_DecompressSignature(b *testing.B) {
 	cb := sig1.Compress()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blsMgr.DecompressSignature(cb) //nolint:errcheck
+		blsMgr.DecSignature(cb) //nolint:errcheck
 	}
 }
 
