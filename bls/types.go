@@ -1,18 +1,20 @@
-package go_bls
+package bls
 
-import "fmt"
+import (
+	"errors"
+	"fmt"
+)
 
-// SignatureBytes is the length of a BLS signature
-const SignatureBytes = 48
+const (
+	// SignatureBytes is the length of a BLS signature
+	SignatureBytes = 48
+	// SecretKeyBytes is the length of a BLS private key
+	SecretKeyBytes = 32
+	// PublicKeyBytes is the length of a BLS public key
+	PublicKeyBytes = 96
+)
 
-// SecretKeyBytes is the length of a BLS private key
-const SecretKeyBytes = 32
-
-// PublicKeyBytes is the length of a BLS public key
-const PublicKeyBytes = 96
-
-// DigestBytes is the length of a BLS message hash/digest
-//const DigestBytes = 96
+var ErrHexLen = errors.New("invalid length of the compressed hex string")
 
 // CompressedSignature is a compressed affine
 type CompressedSignature [SignatureBytes]byte
@@ -25,9 +27,6 @@ type CompressedPublic [PublicKeyBytes]byte
 
 // Message is a byte slice
 type Message []byte
-
-// Digest is a compressed affine
-//type Digest [DigestBytes]byte
 
 type SecretKey interface {
 	// Sign returns the BLS signature of the giving message.
@@ -48,8 +47,6 @@ type PublicKey interface {
 }
 
 type Signature interface {
-	// Aggregate adds an other signature to the current.
-	//Aggregate(other Signature) error
 	// Compress compresses the signature to a byte slice.
 	Compress() CompressedSignature
 }
@@ -65,12 +62,18 @@ type BlsManager interface {
 	VerifyAggregatedOne([]PublicKey, Message, Signature) error
 	// VerifyAggregatedN verifies each public key against each message.
 	VerifyAggregatedN([]PublicKey, []Message, Signature) error
-	//DecompressPublicKey
-	DecompressPublicKey(CompressedPublic) (PublicKey, error)
-	//DecompressPrivateKey
-	DecompressPrivateKey(CompressedSecret) (SecretKey, error)
-	//Decompress Signature
-	DecompressSignature(CompressedSignature) (Signature, error)
+	//DecPublicKey decompress a public key
+	DecPublicKey(CompressedPublic) (PublicKey, error)
+	//DecPublicKeyHex decompress a public key from a hex string
+	DecPublicKeyHex(string) (PublicKey, error)
+	//DecSecretKey decompress a secret key
+	DecSecretKey(CompressedSecret) (SecretKey, error)
+	//DecSecretKeyHex decompress a secret key from a hex string
+	DecSecretKeyHex(string) (SecretKey, error)
+	//DecSignature decompress a signature
+	DecSignature(CompressedSignature) (Signature, error)
+	//DecSignatureHex decompress a signature from a hex string
+	DecSignatureHex(string) (Signature, error)
 }
 
 func (b CompressedPublic) String() string {
