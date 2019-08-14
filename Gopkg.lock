@@ -11,14 +11,14 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:842e8630a16ea98168a4c9a035cbda71c20352ee7b28abe2e962ac4e380676c7"
+  digest = "1:a96200e0c27270b2d9996953d57fd3f37a1cbcef029e8747a9f4f97863285c86"
   name = "github.com/phoreproject/bls"
   packages = [
     ".",
     "g2pubs",
   ]
   pruneopts = "UT"
-  revision = "e008a268030eb9d66972a79cf193032469364cc6"
+  revision = "fb0e03c433000562a8f27e0e820667fd6c13d62b"
 
 [[projects]]
   digest = "1:0028cb19b2e4c3112225cd871870f2d9cf49b9b4276531f03438a88e94be86fe"

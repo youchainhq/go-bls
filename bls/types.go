@@ -14,7 +14,7 @@ const (
 	PublicKeyBytes = 96
 )
 
-var ErrHexLen = errors.New("invalid length of the compressed hex string")
+var ErrBytesLen = errors.New("invalid length of the compressed byte slice")
 
 // CompressedSignature is a compressed affine
 type CompressedSignature [SignatureBytes]byte
@@ -63,15 +63,15 @@ type BlsManager interface {
 	// VerifyAggregatedN verifies each public key against each message.
 	VerifyAggregatedN([]PublicKey, []Message, Signature) error
 	//DecPublicKey decompress a public key
-	DecPublicKey(CompressedPublic) (PublicKey, error)
+	DecPublicKey([]byte) (PublicKey, error)
 	//DecPublicKeyHex decompress a public key from a hex string
 	DecPublicKeyHex(string) (PublicKey, error)
 	//DecSecretKey decompress a secret key
-	DecSecretKey(CompressedSecret) (SecretKey, error)
+	DecSecretKey([]byte) (SecretKey, error)
 	//DecSecretKeyHex decompress a secret key from a hex string
 	DecSecretKeyHex(string) (SecretKey, error)
 	//DecSignature decompress a signature
-	DecSignature(CompressedSignature) (Signature, error)
+	DecSignature([]byte) (Signature, error)
 	//DecSignatureHex decompress a signature from a hex string
 	DecSignatureHex(string) (Signature, error)
 }
@@ -86,4 +86,16 @@ func (b CompressedSecret) String() string {
 
 func (b CompressedSignature) String() string {
 	return fmt.Sprintf("%0x", b[:])
+}
+
+func (b CompressedPublic) Bytes() []byte {
+	return b[:]
+}
+
+func (b CompressedSecret) Bytes() []byte {
+	return b[:]
+}
+
+func (b CompressedSignature) Bytes() []byte {
+	return b[:]
 }
