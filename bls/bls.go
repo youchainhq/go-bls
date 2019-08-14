@@ -106,22 +106,30 @@ func (mgr *blsManager) VerifyAggregatedN(pubs []PublicKey, ms []Message, sig Sig
 }
 
 //DecPublicKey
-func (mgr *blsManager) DecPublicKey(b CompressedPublic) (PublicKey, error) {
-	pk, err := g2pubs.DeserializePublicKey(b)
+func (mgr *blsManager) DecPublicKey(b []byte) (PublicKey, error) {
+	if len(b) != PublicKeyBytes {
+		return nil, ErrBytesLen
+	}
+	var comp CompressedPublic
+	copy(comp[:], b)
+	pk, err := g2pubs.DeserializePublicKey(comp)
 	return &public{pk: pk}, err
 }
 
 func (mgr *blsManager) DecPublicKeyHex(s string) (PublicKey, error) {
-	c, err := hexToCompressedPublic(s)
-	if err != nil {
-		return nil, err
-	}
-	return mgr.DecPublicKey(c)
+	b := fromHex(s)
+	return mgr.DecPublicKey(b)
 }
 
 //DecSecretKey
-func (mgr *blsManager) DecSecretKey(b CompressedSecret) (SecretKey, error) {
-	sk := g2pubs.DeserializeSecretKey(b)
+func (mgr *blsManager) DecSecretKey(b []byte) (SecretKey, error) {
+	if len(b) != SecretKeyBytes {
+		return nil, ErrBytesLen
+	}
+	var comp CompressedSecret
+	copy(comp[:], b)
+
+	sk := g2pubs.DeserializeSecretKey(comp)
 	if sk == nil {
 		return nil, errors.New("invalid secret key bytes")
 	}
@@ -129,16 +137,18 @@ func (mgr *blsManager) DecSecretKey(b CompressedSecret) (SecretKey, error) {
 }
 
 func (mgr *blsManager) DecSecretKeyHex(s string) (SecretKey, error) {
-	c, err := hexToCompressedSecret(s)
-	if err != nil {
-		return nil, err
-	}
-	return mgr.DecSecretKey(c)
+	b := fromHex(s)
+	return mgr.DecSecretKey(b)
 }
 
 //Decompress Signature
-func (mgr *blsManager) DecSignature(b CompressedSignature) (Signature, error) {
-	g1sig, err := g2pubs.DeserializeSignature(b)
+func (mgr *blsManager) DecSignature(b []byte) (Signature, error) {
+	if len(b) != SignatureBytes {
+		return nil, ErrBytesLen
+	}
+	var comp CompressedSignature
+	copy(comp[:], b)
+	g1sig, err := g2pubs.DeserializeSignature(comp)
 	if err == nil {
 		//make a copy
 		var copyBytes CompressedSignature
@@ -149,11 +159,8 @@ func (mgr *blsManager) DecSignature(b CompressedSignature) (Signature, error) {
 }
 
 func (mgr *blsManager) DecSignatureHex(s string) (Signature, error) {
-	c, err := hexToCompressedSignature(s)
-	if err != nil {
-		return nil, err
-	}
-	return mgr.DecSignature(c)
+	b := fromHex(s)
+	return mgr.DecSignature(b)
 }
 
 func converPublicKeysToOrigin(pubs []PublicKey) ([]*g2pubs.PublicKey, error) {
@@ -166,34 +173,4 @@ func converPublicKeysToOrigin(pubs []PublicKey) ([]*g2pubs.PublicKey, error) {
 		origins = append(origins, gp.pk)
 	}
 	return origins, nil
-}
-
-func hexToCompressedPublic(s string) (CompressedPublic, error) {
-	b := fromHex(s)
-	var comp CompressedPublic
-	if len(b) != PublicKeyBytes {
-		return comp, ErrHexLen
-	}
-	copy(comp[:], b)
-	return comp, nil
-}
-
-func hexToCompressedSecret(s string) (CompressedSecret, error) {
-	b := fromHex(s)
-	var comp CompressedSecret
-	if len(b) != SecretKeyBytes {
-		return comp, ErrHexLen
-	}
-	copy(comp[:], b)
-	return comp, nil
-}
-
-func hexToCompressedSignature(s string) (CompressedSignature, error) {
-	b := fromHex(s)
-	var comp CompressedSignature
-	if len(b) != SignatureBytes {
-		return comp, ErrHexLen
-	}
-	copy(comp[:], b)
-	return comp, nil
 }

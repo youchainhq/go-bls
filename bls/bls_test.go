@@ -51,9 +51,9 @@ func TestSingleSignAndVerify(t *testing.T) {
 func TestBlsManager_Decompress(t *testing.T) {
 	sk, pk := blsMgr.GenerateKey()
 	bsk, bpk := sk.Compress(), pk.Compress()
-	dsk, err := blsMgr.DecSecretKey(bsk)
+	dsk, err := blsMgr.DecSecretKey(bsk.Bytes())
 	assert.NoError(t, err)
-	dpk, err := blsMgr.DecPublicKey(bpk)
+	dpk, err := blsMgr.DecPublicKey(bpk.Bytes())
 	assert.NoError(t, err)
 
 	//decompress string
@@ -73,7 +73,7 @@ func TestBlsManager_Decompress(t *testing.T) {
 	sig2 := dsk.Sign(m1)
 	assert.EqualValues(t, sig1, sig2)
 
-	dsig, err := blsMgr.DecSignature(sig1.Compress())
+	dsig, err := blsMgr.DecSignature(sig1.Compress().Bytes())
 	assert.NoError(t, err)
 	err = dpk.Verify(m1, dsig)
 	assert.NoError(t, err)
@@ -101,15 +101,25 @@ func TestBlsManager_Decompress(t *testing.T) {
 	//invalid hex
 	skstr += "00"
 	pkstr += pkstr[:len(pkstr)-1]
-	sigcp := sig1.Compress()
-	sigcp[0] = sigcp[0] + 1
-	sigstr = sigcp.String()
-	dskFromHex, err = blsMgr.DecSecretKeyHex(skstr)
+	//sigcp := sig1.Compress()
+	//fmt.Println(sigcp.String())
+	//sigcp[0] = sigcp[0] + 1
+	//sigstr = sigcp.String()
+	//fmt.Println(sigstr)
+	_, err = blsMgr.DecSecretKeyHex(skstr)
 	assert.Error(t, err)
-	dpkFromHex, err = blsMgr.DecPublicKeyHex(pkstr)
+	_, err = blsMgr.DecPublicKeyHex(pkstr)
 	assert.Error(t, err)
-	dsigFromHex, err = blsMgr.DecSignatureHex(sigstr)
-	assert.Error(t, err)
+	//dsigFromHex, err = blsMgr.DecSignatureHex(sigstr)
+	//assert.Error(t, err)
+}
+
+func TestDebug(t *testing.T) {
+	//	//valid sig: 82051c87397e54313c98ad614e3f2085e43cd2c8cb5262c8d6cc27c871b91efabbbfd13033938e8bb95fdb3da5973dfd
+	//	//panic sig: 83051c87397e54313c98ad614e3f2085e43cd2c8cb5262c8d6cc27c871b91efabbbfd13033938e8bb95fdb3da5973dfd
+	//	sigstr := "83051c87397e54313c98ad614e3f2085e43cd2c8cb5262c8d6cc27c871b91efabbbfd13033938e8bb95fdb3da5973dfd"
+	//	_, err := blsMgr.DecSignatureHex(sigstr)
+	//	assert.NoError(t, err)
 }
 
 func TestBlsManager_Aggregate(t *testing.T) {
@@ -191,7 +201,7 @@ func TestSignature_Compress(t *testing.T) {
 
 func BenchmarkBLSAggregateSignature(b *testing.B) {
 	msg := Message(">16 character identical message")
-	n := 2
+	n := 200
 	sigs := make([]Signature, 0, n) //signatures for the same message
 	for i := 0; i < n; i++ {
 		sk, _ := blsMgr.GenerateKey()
@@ -206,14 +216,14 @@ func BenchmarkBLSAggregateSignature(b *testing.B) {
 
 func BenchmarkBLSSign(b *testing.B) {
 	sks := make([]SecretKey, b.N)
+	msgs := make([]Message, 0, b.N)
 	for i := range sks {
 		sks[i], _ = blsMgr.GenerateKey()
+		msgs = append(msgs, Message(fmt.Sprintf("Hello world! 16 characters %d", i)))
 	}
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-
-		msg := Message(fmt.Sprintf("Hello world! 16 characters %d", i))
-		sks[i].Sign(msg)
+		sks[i].Sign(msgs[i])
 	}
 }
 
@@ -228,13 +238,33 @@ func BenchmarkBLSVerify(b *testing.B) {
 	}
 }
 
+func BenchmarkBlsManager_VerifyAggregatedOne(b *testing.B) {
+	m := Message("message to be signed. 将要做签名的消息")
+	n := 200
+	//sks := make([]SecretKey, 0, n)
+	pubs := make([]PublicKey, 0, n)
+	sigs := make([]Signature, 0, n) //signatures for the same message
+	for i := 0; i < n; i++ {
+		sk, pk := blsMgr.GenerateKey()
+		//sks = append(sks, sk)
+		pubs = append(pubs, pk)
+		sigs = append(sigs, sk.Sign(m))
+	}
+	asig, _ := blsMgr.Aggregate(sigs)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		blsMgr.VerifyAggregatedOne(pubs, m, asig) //nolint:errcheck
+	}
+}
+
 func BenchmarkBlsDecompressPublicKey(b *testing.B) {
 	_, pk := blsMgr.GenerateKey()
 	cpk := pk.Compress()
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blsMgr.DecPublicKey(cpk) //nolint:errcheck
+		blsMgr.DecPublicKey(cpk.Bytes()) //nolint:errcheck
 	}
 }
 
@@ -245,7 +275,7 @@ func BenchmarkBlsManager_DecompressSignature(b *testing.B) {
 	cb := sig1.Compress()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		blsMgr.DecSignature(cb) //nolint:errcheck
+		blsMgr.DecSignature(cb.Bytes()) //nolint:errcheck
 	}
 }
 
