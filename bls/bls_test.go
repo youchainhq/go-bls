@@ -240,7 +240,7 @@ func BenchmarkBLSVerify(b *testing.B) {
 
 func BenchmarkBlsManager_VerifyAggregatedOne(b *testing.B) {
 	m := Message("message to be signed. 将要做签名的消息")
-	n := 200
+	n := 100
 	//sks := make([]SecretKey, 0, n)
 	pubs := make([]PublicKey, 0, n)
 	sigs := make([]Signature, 0, n) //signatures for the same message
@@ -255,6 +255,29 @@ func BenchmarkBlsManager_VerifyAggregatedOne(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		blsMgr.VerifyAggregatedOne(pubs, m, asig) //nolint:errcheck
+	}
+}
+
+func BenchmarkBlsManager_VerifyAggregatedN(b *testing.B) {
+	m := Message("message to be signed. 将要做签名的消息")
+	n := 100
+	//sks := make([]SecretKey, 0, n)
+	pubs := make([]PublicKey, 0, n)
+	sigs := make([]Signature, 0, n)
+	msgs := make([]Message, 0, n)
+	for i := 0; i < n; i++ {
+		mi := append(m, byte(i))
+		sk, pk := blsMgr.GenerateKey()
+		//sks = append(sks, sk)
+		pubs = append(pubs, pk)
+		sigs = append(sigs, sk.Sign(mi))
+		msgs = append(msgs, mi)
+	}
+	asig, _ := blsMgr.Aggregate(sigs)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		blsMgr.VerifyAggregatedN(pubs, msgs, asig) //nolint:errcheck
 	}
 }
 
