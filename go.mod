@@ -1,4 +1,4 @@
-module youchain/go-bls
+module github.com/YOUChainHQ/go-bls
 
 go 1.12
 
